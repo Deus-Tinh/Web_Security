@@ -1,0 +1,53 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: sentinel
+      POSTGRES_USER: sentinel
+      POSTGRES_PASSWORD: sentinel
+    ports:
+      - "55432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sentinel -d sentinel"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    env_file:
+      - ./backend/.env.example
+    environment:
+      DATABASE_URL: postgresql+asyncpg://sentinel:sentinel@postgres:5432/sentinel
+      CORS_ORIGINS: '["http://localhost:5173"]'
+      ALLOWED_TARGET_HOSTS: '["localhost","127.0.0.1","vulnerable-lab","host.docker.internal"]'
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend/storage:/app/storage
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+  vulnerable-lab:
+    image: python:3.12-slim
+    working_dir: /lab
+    command: python vulnerable_lab_stdlib.py
+    volumes:
+      - ./vulnerable_lab_stdlib.py:/lab/vulnerable_lab_stdlib.py:ro
+    ports:
+      - "5000:5000"
+
+volumes:
+  postgres_data:

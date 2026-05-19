@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node / frontend
+node_modules/
+dist/
+frontend/node_modules/
+frontend/dist/
+
+# Environment and secrets
+.env
+*.env
+!.env.example
+backend/.env
+frontend/.env
+
+# Runtime data
+*.db
+*.sqlite
+*.sqlite3
+backend/storage/
+storage/
+*.log
+
+# Generated reports and archives
+*.zip
+scan_report.*
+sample_report.md
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Local app state
+.sixth/

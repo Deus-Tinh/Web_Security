@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Online Shopping Mall — Vulnerable Lab</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <style>
+    header h1 { color: white; text-shadow: 0 10px 10px black, 0 0 2px black; }
+    header h5 { text-decoration: overline; }
+    /* Lab badge */
+    .lab-badge {
+      position: fixed; top: 10px; right: 10px; z-index: 9999;
+      background: #dc3545; color: white; padding: 6px 14px;
+      border-radius: 20px; font-size: 12px; font-weight: bold;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+    .vuln-tag {
+      display: inline-block; font-size: 10px; padding: 2px 8px;
+      border-radius: 4px; font-weight: bold; letter-spacing: 1px;
+    }
+    .card-product { transition: transform .2s; cursor: pointer; }
+    .card-product:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,.15); }
+  </style>
+</head>
+<body>
+
+<!-- Lab Environment Badge -->
+<div class="lab-badge">⚠️ VULNERABLE LAB</div>
+
+<div class="container-xl">
+  <!-- ── HEADER ── -->
+  <header class="row m-1 py-3 bg-dark rounded-bottom">
+    <div class="col-md-8 d-flex align-items-end">
+      <div class="text-md-start text-center">
+        <h1>ONLINE SHOPPING MALL</h1>
+        <h5 class="text-secondary">THE CENTER POINT OF PROFESSIONAL PROGRAMMING</h5>
+      </div>
+    </div>
+    <div class="col-md-4 text-end text-muted small d-flex align-items-center justify-content-end">
+      <span class="badge bg-danger me-2">Lab Mode</span>
+      <span>Flask + SQLite</span>
+    </div>
+  </header>
+
+  <!-- ── NAVBAR ── -->
+  <nav class="navbar sticky-top navbar-expand-lg bg-dark" data-bs-theme="dark">
+    <div class="container-fluid">
+      <button class="navbar-toggler" type="button"
+        data-bs-toggle="collapse" data-bs-target="#navbarMain">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarMain">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item">
+            <a class="nav-link active" href="/"><i class="fa-solid fa-house"></i> Home</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#"><i class="bi bi-p-circle"></i> Products</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#"><i class="fa-solid fa-phone"></i> Contact</a>
+          </li>
+        </ul>
+        <ul class="navbar-nav">
+          <li class="nav-item"><a href="" class="nav-link">English</a></li>
+          <li class="nav-item"><a href="" class="nav-link">Tiếng Việt</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── MAIN ── -->
+  <main class="row mt-3">
+
+    <!-- ════ LEFT: Product Grid (col-9) ════ -->
+    <div class="col-lg-9 col-md-8 order-md-0 order-1">
+
+      <!-- ── Vulnerability Info Banner (cho slide demo) ── -->
+      {% if search_query is not none %}
+      <div class="alert alert-warning border-danger border-2 mb-3" role="alert">
+        <span class="vuln-tag bg-danger text-white me-2">🔴 XSS POINT</span>
+        Endpoint: <code>/search?q=</code> — Input phản chiếu lại trong HTML <strong>không escape</strong>
+      </div>
+      {% endif %}
+
+      {% if category is not none %}
+      <div class="alert alert-warning border-danger border-2 mb-3" role="alert">
+        <span class="vuln-tag bg-danger text-white me-2">🔴 SQLi POINT</span>
+        Endpoint: <code>/category?name=</code> — Tham số nối thẳng vào câu SQL
+      </div>
+      {% endif %}
+
+      <!-- ── XSS Banner: inject RAW html (lỗ hổng cố ý) ── -->
+      {% if search_banner %}
+      {{ search_banner | safe }}
+      {% endif %}
+
+      <!-- ── SQL Error lộ ra ngoài ── -->
+      {% if sql_error %}
+      <div class="alert alert-danger">
+        <strong>⚠️ Database Error (SQL Error Disclosure):</strong><br>
+        <code>{{ sql_error }}</code>
+      </div>
+      {% endif %}
+
+      <!-- ── Page title ── -->
+      <h5 class="mb-3">
+        {% if category %}
+          <i class="bi bi-tag"></i> Category: <strong>{{ category }}</strong>
+          — {{ products|length }} sản phẩm
+        {% elif search_query %}
+          <i class="bi bi-search"></i> Tìm kiếm: tìm thấy {{ products|length }} kết quả
+        {% else %}
+          <i class="bi bi-grid"></i> Tất cả sản phẩm
+        {% endif %}
+      </h5>
+
+      <!-- ── Product Cards ── -->
+      <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
+        {% if products %}
+          {% for p in products %}
+          <div class="col">
+            <div class="card h-100 card-product shadow-sm">
+              <div class="card-body">
+                <span class="badge bg-secondary mb-1 small">{{ p['category'] }}</span>
+                <h6 class="card-title">{{ p['name'] }}</h6>
+                <p class="card-text small text-muted">{{ p['description'] }}</p>
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                  <span class="text-danger fw-bold">${{ "%.2f"|format(p['price']) }}</span>
+                  <span class="text-warning small">
+                    {% for i in range(p['rating']|int) %}★{% endfor %}
+                    ({{ p['rating'] }})
+                  </span>
+                </div>
+              </div>
+              <div class="card-footer d-flex gap-2">
+                <a href="#" class="btn btn-outline-primary btn-sm flex-grow-1">BUY NOW</a>
+                <button class="btn btn-warning btn-sm"><i class="fa fa-heart text-white"></i></button>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="col-12">
+            <div class="alert alert-secondary">Không tìm thấy sản phẩm nào.</div>
+          </div>
+        {% endif %}
+      </div><!-- /row products -->
+
+    </div><!-- /col-9 -->
+
+    <!-- ════ RIGHT: Sidebar (col-3) ════ -->
+    <div class="col-lg-3 col-md-4 order-md-1 order-0 g-4">
+
+      <!-- Cart widget -->
+      <div class="card shadow mb-3">
+        <div class="card-body d-flex align-items-center">
+          <i class="bi bi-cart3 fs-2 text-primary me-3"></i>
+          <div>
+            <p class="mb-0">3 Items</p>
+            <p class="mb-0 fw-bold">$128</p>
+          </div>
+        </div>
+        <div class="text-center pb-2">
+          <a href="" class="btn btn-primary btn-sm w-75">VIEW CART</a>
+        </div>
+      </div>
+
+      <!-- ══ SEARCH WIDGET ══
+           🔴 ĐIỂM LỖ HỔNG XSS
+           Input → GET /search?q=<value>
+           Backend phản chiếu q vào HTML không escape
+      -->
+      <div class="card my-3 shadow">
+        <div class="card-header bg-danger text-white">
+          <small class="vuln-tag">🔴 XSS VULNERABLE INPUT</small>
+        </div>
+        <div class="card-body">
+          <form action="/search" method="get">
+            <div class="input-group">
+              <input type="search" name="q" class="form-control"
+                     placeholder="Search products..."
+                     value="{{ search_query or '' }}"/>
+              <button class="btn btn-outline-secondary" type="submit">
+                <i class="bi bi-search"></i>
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- ══ CATEGORIES WIDGET ══
+           🔴 ĐIỂM LỖ HỔNG SQL INJECTION
+           Click → GET /category?name=<category>
+           Backend nối thẳng vào SQL query
+      -->
+      <div class="card shadow">
+        <div class="card-header text-center bg-danger text-white">
+          <small class="vuln-tag">🔴 SQLi VULNERABLE PARAM</small><br>
+          <i class="fa fa-bars"></i> CATEGORIES
+        </div>
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item list-group-item-action list-group-item-success">
+            <a href="/category?name=Phones" class="text-decoration-none text-dark">📱 Phones</a>
+          </li>
+          <li class="list-group-item list-group-item-action list-group-item-danger">
+            <a href="/category?name=Laptops" class="text-decoration-none text-dark">💻 Laptops</a>
+          </li>
+          <li class="list-group-item list-group-item-action list-group-item-warning">
+            <a href="/category?name=Desktop" class="text-decoration-none text-dark">🖥️ Desktop</a>
+          </li>
+          <li class="list-group-item list-group-item-action list-group-item-info">
+            <a href="/category?name=Fans" class="text-decoration-none text-dark">🌬️ Fans</a>
+          </li>
+          <li class="list-group-item list-group-item-action list-group-item-light">
+            <a href="/category?name=Tivi" class="text-decoration-none text-dark">📺 Tivi</a>
+          </li>
+          <li class="list-group-item list-group-item-action list-group-item-dark text-white">
+            <a href="/category?name=Accessories" class="text-decoration-none text-white">🎧 Accessories</a>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Vulnerability Legend -->
+      <div class="card mt-3 border-warning">
+        <div class="card-header bg-warning text-dark fw-bold small">
+          ⚠️ Lab Vulnerability Map
+        </div>
+        <ul class="list-group list-group-flush small">
+          <li class="list-group-item">
+            <span class="badge bg-danger">XSS</span>
+            <code>/search?q=</code>
+          </li>
+          <li class="list-group-item">
+            <span class="badge bg-danger">SQLi</span>
+            <code>/category?name=</code>
+          </li>
+        </ul>
+      </div>
+
+    </div><!-- /sidebar -->
+  </main><!-- /main row -->
+</div><!-- /container -->
+
+<!-- ── FOOTER ── -->
+<footer class="bg-dark py-4 mt-4">
+  <div class="container-xl text-secondary">
+    <div class="row">
+      <div class="col-md-6">
+        <h5 class="text-white border-bottom pb-3">INFORMATION</h5>
+        <p>Online Shopping Mall — Vulnerable Lab Environment for Web Security Testing Seminar. Not for production use.</p>
+      </div>
+      <div class="col-md-3 col-6">
+        <h5 class="text-white border-bottom pb-3">PRODUCT</h5>
+        <ul class="nav flex-column">
+          <li class="nav-item"><a class="nav-link" href="/category?name=Phones">Phones</a></li>
+          <li class="nav-item"><a class="nav-link" href="/category?name=Laptops">Laptops</a></li>
+          <li class="nav-item"><a class="nav-link" href="/category?name=Desktop">Desktop</a></li>
+          <li class="nav-item"><a class="nav-link" href="/category?name=Tivi">Tivi</a></li>
+        </ul>
+      </div>
+      <div class="col-md-3 col-6">
+        <h5 class="text-white border-bottom pb-3">QUICK ACCESS</h5>
+        <p>Buy item : 1900 1900</p>
+        <p>Warranty : 1900 1901</p>
+        <p>Tech Support : 1900 1902</p>
+      </div>
+    </div>
+    <hr/>
+    <div class="row">
+      <div class="col-md-6 text-center text-md-start">Copyright ITC, all rights reserved</div>
+      <div class="col-md-6 text-center text-md-end">
+        <span class="badge bg-danger">⚠️ Vulnerable Lab — Educational Use Only</span>
+      </div>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

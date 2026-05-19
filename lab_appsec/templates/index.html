@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Online Shopping Mall - AppSec Lab</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <style>
+    header h1 { color: white; text-shadow: 0 10px 10px black, 0 0 2px black; }
+    .lab-badge {
+      position: fixed; top: 10px; right: 10px; z-index: 9999;
+      background: #dc3545; color: white; padding: 6px 14px;
+      border-radius: 20px; font-size: 12px; font-weight: bold;
+    }
+    .vuln-tag, .safe-tag {
+      display: inline-block; font-size: 10px; padding: 2px 8px;
+      border-radius: 4px; font-weight: bold;
+    }
+    .card-product { transition: transform .2s; }
+    .card-product:hover { transform: translateY(-4px); }
+    .demo-panel { border-width: 2px; }
+  </style>
+</head>
+<body>
+
+<div class="lab-badge">VULNERABLE LAB</div>
+
+<div class="container-xl">
+  <header class="row m-1 py-3 bg-dark rounded-bottom">
+    <div class="col-md-8">
+      <h1 class="text-white">ONLINE SHOPPING MALL</h1>
+      <h5 class="text-secondary">WEB SECURITY SCANNER - APPSEC LAB</h5>
+    </div>
+    <div class="col-md-4 text-end text-muted small d-flex align-items-center justify-content-end">
+      <span class="badge bg-danger me-2">Lab Mode</span>
+      <span>Flask + SQLite</span>
+    </div>
+  </header>
+
+  <main class="row mt-3">
+    <div class="col-lg-9 col-md-8">
+
+      {% if demo_mode == 'vulnerable' and endpoint_type == 'xss' %}
+      <div class="alert alert-danger border-danger border-2 demo-panel">
+        <span class="vuln-tag bg-danger text-white me-2">VULNERABLE DEMO</span>
+        Endpoint: <code>/search?q=</code> - Input phan chieu trong HTML <strong>khong escape</strong>
+      </div>
+      {% elif demo_mode == 'fixed' and endpoint_type == 'xss' %}
+      <div class="alert alert-success border-success border-2 demo-panel">
+        <span class="safe-tag bg-success text-white me-2">FIXED DEMO</span>
+        Endpoint: <code>/safe/search?q=</code> - Jinja2 autoescape bao ve output
+      </div>
+      {% endif %}
+
+      {% if demo_mode == 'vulnerable' and endpoint_type == 'sqli' %}
+      <div class="alert alert-danger border-danger border-2 demo-panel">
+        <span class="vuln-tag bg-danger text-white me-2">VULNERABLE DEMO</span>
+        Endpoint: <code>/category?name=</code> - Tham so noi thang vao cau SQL
+      </div>
+      {% elif demo_mode == 'fixed' and endpoint_type == 'sqli' %}
+      <div class="alert alert-success border-success border-2 demo-panel">
+        <span class="safe-tag bg-success text-white me-2">FIXED DEMO</span>
+        Endpoint: <code>/safe/category?name=</code> - Parameterized query
+      </div>
+      {% endif %}
+
+      {% if search_banner %}
+      {{ search_banner | safe }}
+      {% elif search_query is not none and demo_mode == 'fixed' %}
+      <div class="alert alert-info mt-3">
+        Ket qua tim kiem cho: <strong>{{ search_query }}</strong>
+        - Tim thay {{ products|length }} san pham.
+      </div>
+      {% endif %}
+
+      {% if sql_error %}
+      <div class="alert alert-danger">
+        <strong>Database Error (SQL Error Disclosure):</strong><br>
+        <code>{{ sql_error }}</code>
+      </div>
+      {% endif %}
+
+      <h5 class="mb-3">
+        {% if category %}
+          Category: <strong>{{ category }}</strong> - {{ products|length }} san pham
+        {% elif search_query is not none %}
+          Tim kiem - {{ products|length }} ket qua
+        {% else %}
+          Tat ca san pham
+        {% endif %}
+      </h5>
+
+      <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
+        {% if products %}
+          {% for p in products %}
+          <div class="col">
+            <div class="card h-100 card-product shadow-sm">
+              <div class="card-body">
+                <span class="badge bg-secondary mb-1">{{ p['category'] }}</span>
+                <h6 class="card-title">{{ p['name'] }}</h6>
+                <p class="card-text small text-muted">{{ p['description'] }}</p>
+                <span class="text-danger fw-bold">${{ "%.2f"|format(p['price']) }}</span>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="col-12"><div class="alert alert-secondary">Khong tim thay san pham.</div></div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="col-lg-3 col-md-4 g-4">
+
+      <div class="card my-3 shadow border-danger demo-panel">
+        <div class="card-header bg-danger text-white">
+          <span class="vuln-tag bg-dark me-1">VULNERABLE DEMO</span>
+          <small>Reflected XSS - <code>/search?q=</code></small>
+        </div>
+        <div class="card-body">
+          <form action="/search" method="get">
+            <input type="search" name="q" class="form-control mb-2" placeholder="Search..."
+                   value="{{ search_query if demo_mode == 'vulnerable' else '' }}"/>
+            <button class="btn btn-danger btn-sm w-100" type="submit">Search (Vulnerable)</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="card my-3 shadow border-success demo-panel">
+        <div class="card-header bg-success text-white">
+          <span class="safe-tag bg-dark me-1">FIXED DEMO</span>
+          <small>XSS patched - <code>/safe/search?q=</code></small>
+        </div>
+        <div class="card-body">
+          <form action="/safe/search" method="get">
+            <input type="search" name="q" class="form-control mb-2" placeholder="Safe search..."
+                   value="{{ search_query if demo_mode == 'fixed' and endpoint_type == 'xss' else '' }}"/>
+            <button class="btn btn-success btn-sm w-100" type="submit">Search (Fixed)</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="card shadow border-danger demo-panel">
+        <div class="card-header bg-danger text-white text-center">
+          <span class="vuln-tag bg-dark">VULNERABLE DEMO</span><br>
+          <small>SQLi - <code>/category?name=</code></small>
+        </div>
+        <ul class="list-group list-group-flush">
+          {% for cat in ['Phones','Laptops','Desktop','Fans','Tivi','Accessories'] %}
+          <li class="list-group-item"><a href="/category?name={{ cat }}">{{ cat }}</a></li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div class="card shadow border-success demo-panel mt-3">
+        <div class="card-header bg-success text-white text-center">
+          <span class="safe-tag bg-dark">FIXED DEMO</span><br>
+          <small>SQLi patched - <code>/safe/category?name=</code></small>
+        </div>
+        <ul class="list-group list-group-flush">
+          {% for cat in ['Phones','Laptops','Desktop','Fans','Tivi','Accessories'] %}
+          <li class="list-group-item"><a href="/safe/category?name={{ cat }}">{{ cat }}</a></li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div class="card mt-3 border-warning">
+        <div class="card-header bg-warning fw-bold small">Lab Vulnerability Map</div>
+        <ul class="list-group list-group-flush small">
+          <li class="list-group-item"><span class="badge bg-danger">XSS</span> <code>/search?q=</code></li>
+          <li class="list-group-item"><span class="badge bg-danger">SQLi</span> <code>/category?name=</code></li>
+          <li class="list-group-item"><span class="badge bg-success">Fixed</span> <code>/safe/*</code></li>
+        </ul>
+      </div>
+    </div>
+  </main>
+</div>
+
+<footer class="bg-dark py-3 mt-4 text-center text-secondary">
+  <span class="badge bg-danger">Vulnerable Lab - Educational Use Only</span>
+</footer>
+</body>
+</html>
